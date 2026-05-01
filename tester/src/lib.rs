@@ -101,6 +101,18 @@ where
             .map(|task| task.map(Message))
     }
 
+    #[cfg(feature = "raw-window-events")]
+    fn raw_device_event(
+        &self,
+        state: &mut Self::State,
+        device: program::winit::event::DeviceId,
+        event: &program::winit::event::DeviceEvent,
+    ) -> Option<Task<Self::Message>> {
+        state
+            .raw_device_event(&self.program, device, event)
+            .map(|task| task.map(Message))
+    }
+
     fn view<'a>(
         &self,
         state: &'a Self::State,
@@ -423,6 +435,29 @@ impl<P: Program + 'static> Tester<P> {
             }
             State::Asserting { state, window, .. } => program
                 .raw_window_event(state, *window, event)
+                .map(|task| task.map(Tick::Program)),
+        }
+    }
+
+    #[cfg(feature = "raw-window-events")]
+    fn raw_device_event(
+        &mut self,
+        program: &P,
+        device: program::winit::event::DeviceId,
+        event: &program::winit::event::DeviceEvent,
+    ) -> Option<Task<Tick<P>>> {
+        match &mut self.state {
+            State::Empty => None,
+            State::Idle { state } => program
+                .raw_device_event(state, device, event)
+                .map(|task| task.map(Tick::Program)),
+            State::Recording { emulator } | State::Playing { emulator, .. } => {
+                emulator
+                    .raw_device_event(program, device, event)
+                    .then(Task::none)
+            }
+            State::Asserting { state, .. } => program
+                .raw_device_event(state, device, event)
                 .map(|task| task.map(Tick::Program)),
         }
     }

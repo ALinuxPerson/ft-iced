@@ -235,6 +235,22 @@ where
             }
         }
 
+        #[cfg(feature = "raw-window-events")]
+        fn device_event(
+            &mut self,
+            event_loop: &winit::event_loop::ActiveEventLoop,
+            device_id: winit::event::DeviceId,
+            event: winit::event::DeviceEvent,
+        ) {
+            self.process_event(
+                event_loop,
+                Event::EventLoopAwakened(winit::event::Event::DeviceEvent {
+                    device_id,
+                    event,
+                }),
+            );
+        }
+
         fn user_event(
             &mut self,
             event_loop: &winit::event_loop::ActiveEventLoop,
@@ -761,6 +777,65 @@ async fn run_instance<P>(
                             &mut system_theme,
                         );
                         actions += 1;
+                    }
+                    #[cfg(feature = "raw-window-events")]
+                    event::Event::DeviceEvent { device_id, event } => {
+                        let cached_interfaces: FxHashMap<_, _> =
+                            ManuallyDrop::into_inner(user_interfaces)
+                                .into_iter()
+                                .map(|(id, ui)| (id, ui.into_cache()))
+                                .collect();
+
+                        let task = runtime.enter(|| {
+                            program.raw_device_event(device_id, &event)
+                        });
+
+                        let actions = if let Some(task) = task {
+                            let actions = run_task(&mut runtime, task);
+
+                            let subscription =
+                                runtime.enter(|| program.subscription());
+                            let recipes = subscription::into_recipes(
+                                subscription.map(Action::Output),
+                            );
+
+                            runtime.track(recipes);
+
+                            Some(actions)
+                        } else {
+                            None
+                        };
+
+                        user_interfaces =
+                            ManuallyDrop::new(build_user_interfaces(
+                                &program,
+                                &mut window_manager,
+                                cached_interfaces,
+                            ));
+
+                        if let Some(actions) = actions {
+                            for action in actions {
+                                run_action(
+                                    action,
+                                    &program,
+                                    &mut runtime,
+                                    &mut compositor,
+                                    &mut events,
+                                    &mut messages,
+                                    &mut clipboard,
+                                    &mut control_sender,
+                                    &mut user_interfaces,
+                                    &mut window_manager,
+                                    &mut ui_caches,
+                                    &mut is_window_opening,
+                                    &mut system_theme,
+                                );
+                            }
+
+                            for (_id, window) in window_manager.iter_mut() {
+                                window.raw.request_redraw();
+                            }
+                        }
                     }
                     event::Event::WindowEvent {
                         window_id: id,

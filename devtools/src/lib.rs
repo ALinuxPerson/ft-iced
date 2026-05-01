@@ -92,6 +92,16 @@ where
         state.raw_window_event(&self.program, window, event)
     }
 
+    #[cfg(feature = "raw-window-events")]
+    fn raw_device_event(
+        &self,
+        state: &mut Self::State,
+        device: program::winit::event::DeviceId,
+        event: &program::winit::event::DeviceEvent,
+    ) -> Option<Task<Self::Message>> {
+        state.raw_device_event(&self.program, device, event)
+    }
+
     fn view<'a>(
         &self,
         state: &'a Self::State,
@@ -320,6 +330,18 @@ where
     ) -> Option<Task<Event<P>>> {
         program
             .raw_window_event(&mut self.state, window, event)
+            .map(|task| task.map(Event::Program))
+    }
+
+    #[cfg(feature = "raw-window-events")]
+    pub fn raw_device_event(
+        &mut self,
+        program: &P,
+        device: program::winit::event::DeviceId,
+        event: &program::winit::event::DeviceEvent,
+    ) -> Option<Task<Event<P>>> {
+        program
+            .raw_device_event(&mut self.state, device, event)
             .map(|task| task.map(Event::Program))
     }
 

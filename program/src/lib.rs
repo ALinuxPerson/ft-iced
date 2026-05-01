@@ -67,6 +67,16 @@ pub trait Program: Sized {
         None
     }
 
+    #[cfg(feature = "raw-window-events")]
+    fn raw_device_event(
+        &self,
+        _state: &mut Self::State,
+        _device: winit::event::DeviceId,
+        _event: &winit::event::DeviceEvent,
+    ) -> Option<Task<Self::Message>> {
+        None
+    }
+
     fn view<'a>(
         &self,
         state: &'a Self::State,
@@ -189,6 +199,16 @@ pub fn with_title<P: Program>(
             self.program.raw_window_event(state, window, event)
         }
 
+        #[cfg(feature = "raw-window-events")]
+        fn raw_device_event(
+            &self,
+            state: &mut Self::State,
+            device: winit::event::DeviceId,
+            event: &winit::event::DeviceEvent,
+        ) -> Option<Task<Self::Message>> {
+            self.program.raw_device_event(state, device, event)
+        }
+
         fn view<'a>(
             &self,
             state: &'a Self::State,
@@ -289,6 +309,16 @@ pub fn with_subscription<P: Program>(
             self.program.raw_window_event(state, window, event)
         }
 
+        #[cfg(feature = "raw-window-events")]
+        fn raw_device_event(
+            &self,
+            state: &mut Self::State,
+            device: winit::event::DeviceId,
+            event: &winit::event::DeviceEvent,
+        ) -> Option<Task<Self::Message>> {
+            self.program.raw_device_event(state, device, event)
+        }
+
         fn view<'a>(
             &self,
             state: &'a Self::State,
@@ -363,6 +393,15 @@ where
             Some((self.raw_window_event)(state, window, event).into())
         }
 
+        fn raw_device_event(
+            &self,
+            state: &mut Self::State,
+            device: winit::event::DeviceId,
+            event: &winit::event::DeviceEvent,
+        ) -> Option<Task<Self::Message>> {
+            self.program.raw_device_event(state, device, event)
+        }
+
         fn name() -> &'static str {
             P::name()
         }
@@ -433,6 +472,128 @@ where
     }
 }
 
+/// Decorates a [`Program`] with the given raw device event function.
+#[cfg(feature = "raw-window-events")]
+pub fn with_raw_device_events<P: Program, F, C>(
+    program: P,
+    f: F,
+) -> impl Program<State = P::State, Message = P::Message, Theme = P::Theme>
+where
+    F: Fn(
+        &mut P::State,
+        winit::event::DeviceId,
+        &winit::event::DeviceEvent,
+    ) -> C,
+    C: Into<Task<P::Message>>,
+{
+    struct WithRawDeviceEvents<P, F> {
+        program: P,
+        raw_device_event: F,
+    }
+
+    impl<P: Program, F, C> Program for WithRawDeviceEvents<P, F>
+    where
+        F: Fn(
+            &mut P::State,
+            winit::event::DeviceId,
+            &winit::event::DeviceEvent,
+        ) -> C,
+        C: Into<Task<P::Message>>,
+    {
+        type State = P::State;
+        type Message = P::Message;
+        type Theme = P::Theme;
+        type Renderer = P::Renderer;
+        type Executor = P::Executor;
+
+        fn raw_window_event(
+            &self,
+            state: &mut Self::State,
+            window: window::Id,
+            event: &winit::event::WindowEvent,
+        ) -> Option<Task<Self::Message>> {
+            self.program.raw_window_event(state, window, event)
+        }
+
+        fn raw_device_event(
+            &self,
+            state: &mut Self::State,
+            device: winit::event::DeviceId,
+            event: &winit::event::DeviceEvent,
+        ) -> Option<Task<Self::Message>> {
+            Some((self.raw_device_event)(state, device, event).into())
+        }
+
+        fn name() -> &'static str {
+            P::name()
+        }
+
+        fn settings(&self) -> Settings {
+            self.program.settings()
+        }
+
+        fn window(&self) -> Option<window::Settings> {
+            self.program.window()
+        }
+
+        fn boot(&self) -> (Self::State, Task<Self::Message>) {
+            self.program.boot()
+        }
+
+        fn update(
+            &self,
+            state: &mut Self::State,
+            message: Self::Message,
+        ) -> Task<Self::Message> {
+            self.program.update(state, message)
+        }
+
+        fn view<'a>(
+            &self,
+            state: &'a Self::State,
+            window: window::Id,
+        ) -> Element<'a, Self::Message, Self::Theme, Self::Renderer> {
+            self.program.view(state, window)
+        }
+
+        fn title(&self, state: &Self::State, window: window::Id) -> String {
+            self.program.title(state, window)
+        }
+
+        fn subscription(
+            &self,
+            state: &Self::State,
+        ) -> Subscription<Self::Message> {
+            self.program.subscription(state)
+        }
+
+        fn theme(
+            &self,
+            state: &Self::State,
+            window: window::Id,
+        ) -> Option<Self::Theme> {
+            self.program.theme(state, window)
+        }
+
+        fn style(
+            &self,
+            state: &Self::State,
+            theme: &Self::Theme,
+        ) -> theme::Style {
+            self.program.style(state, theme)
+        }
+
+        fn scale_factor(&self, state: &Self::State, window: window::Id) -> f32 {
+            self.program.scale_factor(state, window)
+        }
+    }
+
+    WithRawDeviceEvents {
+        program,
+        raw_device_event: f,
+    }
+}
+
 /// Decorates a [`Program`] with the given theme function.
 pub fn with_theme<P: Program>(
     program: P,
@@ -497,6 +658,16 @@ pub fn with_theme<P: Program>(
             event: &winit::event::WindowEvent,
         ) -> Option<Task<Self::Message>> {
             self.program.raw_window_event(state, window, event)
+        }
+
+        #[cfg(feature = "raw-window-events")]
+        fn raw_device_event(
+            &self,
+            state: &mut Self::State,
+            device: winit::event::DeviceId,
+            event: &winit::event::DeviceEvent,
+        ) -> Option<Task<Self::Message>> {
+            self.program.raw_device_event(state, device, event)
         }
 
         fn view<'a>(
@@ -596,6 +767,16 @@ pub fn with_style<P: Program>(
             self.program.raw_window_event(state, window, event)
         }
 
+        #[cfg(feature = "raw-window-events")]
+        fn raw_device_event(
+            &self,
+            state: &mut Self::State,
+            device: winit::event::DeviceId,
+            event: &winit::event::DeviceEvent,
+        ) -> Option<Task<Self::Message>> {
+            self.program.raw_device_event(state, device, event)
+        }
+
         fn view<'a>(
             &self,
             state: &'a Self::State,
@@ -683,6 +864,16 @@ pub fn with_scale_factor<P: Program>(
             event: &winit::event::WindowEvent,
         ) -> Option<Task<Self::Message>> {
             self.program.raw_window_event(state, window, event)
+        }
+
+        #[cfg(feature = "raw-window-events")]
+        fn raw_device_event(
+            &self,
+            state: &mut Self::State,
+            device: winit::event::DeviceId,
+            event: &winit::event::DeviceEvent,
+        ) -> Option<Task<Self::Message>> {
+            self.program.raw_device_event(state, device, event)
         }
 
         fn view<'a>(
@@ -786,6 +977,16 @@ pub fn with_executor<P: Program, E: Executor>(
             self.program.raw_window_event(state, window, event)
         }
 
+        #[cfg(feature = "raw-window-events")]
+        fn raw_device_event(
+            &self,
+            state: &mut Self::State,
+            device: winit::event::DeviceId,
+            event: &winit::event::DeviceEvent,
+        ) -> Option<Task<Self::Message>> {
+            self.program.raw_device_event(state, device, event)
+        }
+
         fn view<'a>(
             &self,
             state: &'a Self::State,
@@ -872,6 +1073,17 @@ impl<P: Program> Instance<P> {
     ) -> Option<Task<P::Message>> {
         self.program
             .raw_window_event(&mut self.state, window, event)
+    }
+
+    /// Processes the given raw winit device event and updates the [`Instance`].
+    #[cfg(feature = "raw-window-events")]
+    pub fn raw_device_event(
+        &mut self,
+        device: winit::event::DeviceId,
+        event: &winit::event::DeviceEvent,
+    ) -> Option<Task<P::Message>> {
+        self.program
+            .raw_device_event(&mut self.state, device, event)
     }
 
     /// Produces the current widget tree of the [`Instance`].

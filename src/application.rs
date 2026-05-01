@@ -397,6 +397,29 @@ impl<P: Program> Application<P> {
         }
     }
 
+    /// Sets the raw winit device event logic of the [`Application`].
+    #[cfg(feature = "raw-window-events")]
+    pub fn raw_device_events<C>(
+        self,
+        f: impl Fn(
+            &mut P::State,
+            program::winit::event::DeviceId,
+            &program::winit::event::DeviceEvent,
+        ) -> C,
+    ) -> Application<
+        impl Program<State = P::State, Message = P::Message, Theme = P::Theme>,
+    >
+    where
+        C: Into<Task<P::Message>>,
+    {
+        Application {
+            raw: program::with_raw_device_events(self.raw, f),
+            settings: self.settings,
+            window: self.window,
+            presets: self.presets,
+        }
+    }
+
     /// Sets the theme logic of the [`Application`].
     pub fn theme(
         self,
@@ -518,6 +541,16 @@ impl<P: Program> Program for Application<P> {
         event: &program::winit::event::WindowEvent,
     ) -> Option<Task<Self::Message>> {
         debug::hot(|| self.raw.raw_window_event(state, window, event))
+    }
+
+    #[cfg(feature = "raw-window-events")]
+    fn raw_device_event(
+        &self,
+        state: &mut Self::State,
+        device: program::winit::event::DeviceId,
+        event: &program::winit::event::DeviceEvent,
+    ) -> Option<Task<Self::Message>> {
+        debug::hot(|| self.raw.raw_device_event(state, device, event))
     }
 
     fn view<'a>(
