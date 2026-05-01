@@ -17,7 +17,11 @@ workspace = true
 [features]
 debug = []
 time-travel = []
+raw-window-events = ["dep:winit"]
 
 [dependencies]
 iced_graphics.workspace = true
 iced_runtime.workspace = true
+
+winit.workspace = true
+winit.optional = true

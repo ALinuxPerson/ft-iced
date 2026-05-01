@@ -323,6 +323,16 @@ impl<P: Program> Program for Daemon<P> {
         debug::hot(|| self.raw.update(state, message))
     }
 
+    #[cfg(feature = "raw-window-events")]
+    fn raw_window_event(
+        &self,
+        state: &mut Self::State,
+        window: window::Id,
+        event: &program::winit::event::WindowEvent,
+    ) -> Option<Task<Self::Message>> {
+        debug::hot(|| self.raw.raw_window_event(state, window, event))
+    }
+
     fn view<'a>(
         &self,
         state: &'a Self::State,

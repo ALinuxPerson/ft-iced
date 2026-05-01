@@ -1055,9 +1055,71 @@ async fn run_instance<P>(
                             continue;
                         }
 
-                        let Some((id, window)) =
-                            window_manager.get_mut_alias(window_id)
-                        else {
+                        let Some(id) = window_manager.alias(window_id) else {
+                            continue;
+                        };
+
+                        #[cfg(feature = "raw-window-events")]
+                        {
+                            let cached_interfaces: FxHashMap<_, _> =
+                                ManuallyDrop::into_inner(user_interfaces)
+                                    .into_iter()
+                                    .map(|(id, ui)| (id, ui.into_cache()))
+                                    .collect();
+
+                            let task = runtime.enter(|| {
+                                program.raw_window_event(id, &window_event)
+                            });
+
+                            let actions = if let Some(task) = task {
+                                let actions = run_task(&mut runtime, task);
+
+                                let subscription =
+                                    runtime.enter(|| program.subscription());
+                                let recipes = subscription::into_recipes(
+                                    subscription.map(Action::Output),
+                                );
+
+                                runtime.track(recipes);
+
+                                Some(actions)
+                            } else {
+                                None
+                            };
+
+                            user_interfaces =
+                                ManuallyDrop::new(build_user_interfaces(
+                                    &program,
+                                    &mut window_manager,
+                                    cached_interfaces,
+                                ));
+
+                            if let Some(actions) = actions {
+                                for action in actions {
+                                    run_action(
+                                        action,
+                                        &program,
+                                        &mut runtime,
+                                        &mut compositor,
+                                        &mut events,
+                                        &mut messages,
+                                        &mut clipboard,
+                                        &mut control_sender,
+                                        &mut user_interfaces,
+                                        &mut window_manager,
+                                        &mut ui_caches,
+                                        &mut is_window_opening,
+                                        &mut system_theme,
+                                    );
+                                }
+
+                                for (_id, window) in window_manager.iter_mut() {
+                                    window.raw.request_redraw();
+                                }
+                            }
+                        }
+
+                        let Some(window) = window_manager.get_mut(id) else {
                             continue;
                         };
 
@@ -1305,39 +1367,50 @@ fn update<P: Program, E: Executor>(
 where
     P::Theme: theme::Base,
 {
-    use futures::futures;
-
     let mut actions = Vec::new();
 
     for message in messages.drain(..) {
         let task = runtime.enter(|| program.update(message));
 
-        if let Some(mut stream) = runtime::task::into_stream(task) {
-            let waker = futures::task::noop_waker_ref();
-            let mut context = futures::task::Context::from_waker(waker);
-
-            // Run immediately available actions synchronously (e.g. widget operations)
-            loop {
-                match runtime.enter(|| stream.poll_next_unpin(&mut context)) {
-                    futures::task::Poll::Ready(Some(action)) => {
-                        actions.push(action);
-                    }
-                    futures::task::Poll::Ready(None) => {
-                        break;
-                    }
-                    futures::task::Poll::Pending => {
-                        runtime.run(stream);
-                        break;
-                    }
-                }
-            }
-        }
+        actions.extend(run_task(runtime, task));
     }
 
     let subscription = runtime.enter(|| program.subscription());
     let recipes = subscription::into_recipes(subscription.map(Action::Output));
 
     runtime.track(recipes);
+
+    actions
+}
+
+fn run_task<Message: Send + 'static, E: Executor>(
+    runtime: &mut Runtime<E, Proxy<Message>, Action<Message>>,
+    task: Task<Message>,
+) -> Vec<Action<Message>> {
+    use futures::futures;
+
+    let mut actions = Vec::new();
+
+    if let Some(mut stream) = runtime::task::into_stream(task) {
+        let waker = futures::task::noop_waker_ref();
+        let mut context = futures::task::Context::from_waker(waker);
+
+        // Run immediately available actions synchronously (e.g. widget operations)
+        loop {
+            match runtime.enter(|| stream.poll_next_unpin(&mut context)) {
+                futures::task::Poll::Ready(Some(action)) => {
+                    actions.push(action);
+                }
+                futures::task::Poll::Ready(None) => {
+                    break;
+                }
+                futures::task::Poll::Pending => {
+                    runtime.run(stream);
+                    break;
+                }
+            }
+        }
+    }
 
     actions
 }

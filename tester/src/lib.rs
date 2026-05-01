@@ -89,6 +89,18 @@ where
         state.tick(&self.program, message.0).map(Message)
     }
 
+    #[cfg(feature = "raw-window-events")]
+    fn raw_window_event(
+        &self,
+        state: &mut Self::State,
+        window: window::Id,
+        event: &program::winit::event::WindowEvent,
+    ) -> Option<Task<Self::Message>> {
+        state
+            .raw_window_event(&self.program, window, event)
+            .map(|task| task.map(Message))
+    }
+
     fn view<'a>(
         &self,
         state: &'a Self::State,
@@ -391,6 +403,27 @@ impl<P: Program + 'static> Tester<P> {
 
                 Task::none()
             }
+        }
+    }
+
+    #[cfg(feature = "raw-window-events")]
+    fn raw_window_event(
+        &mut self,
+        program: &P,
+        window: window::Id,
+        event: &program::winit::event::WindowEvent,
+    ) -> Option<Task<Tick<P>>> {
+        match &mut self.state {
+            State::Empty => None,
+            State::Idle { state } => program
+                .raw_window_event(state, window, event)
+                .map(|task| task.map(Tick::Program)),
+            State::Recording { emulator } | State::Playing { emulator, .. } => {
+                emulator.raw_window_event(program, event).then(Task::none)
+            }
+            State::Asserting { state, window, .. } => program
+                .raw_window_event(state, *window, event)
+                .map(|task| task.map(Tick::Program)),
         }
     }
 

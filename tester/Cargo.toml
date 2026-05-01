@@ -11,6 +11,9 @@ categories.workspace = true
 keywords.workspace = true
 rust-version.workspace = true
 
+[features]
+raw-window-events = ["iced_test/raw-window-events"]
+
 [dependencies]
 iced_test.workspace = true
 iced_widget.workspace = true

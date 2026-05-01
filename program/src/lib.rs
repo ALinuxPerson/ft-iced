@@ -3,6 +3,8 @@ pub use iced_graphics as graphics;
 pub use iced_runtime as runtime;
 pub use iced_runtime::core;
 pub use iced_runtime::futures;
+#[cfg(feature = "raw-window-events")]
+pub use winit;
 
 pub mod message;
 
@@ -54,6 +56,16 @@ pub trait Program: Sized {
         state: &mut Self::State,
         message: Self::Message,
     ) -> Task<Self::Message>;
+
+    #[cfg(feature = "raw-window-events")]
+    fn raw_window_event(
+        &self,
+        _state: &mut Self::State,
+        _window: window::Id,
+        _event: &winit::event::WindowEvent,
+    ) -> Option<Task<Self::Message>> {
+        None
+    }
 
     fn view<'a>(
         &self,
@@ -167,6 +179,16 @@ pub fn with_title<P: Program>(
             self.program.update(state, message)
         }
 
+        #[cfg(feature = "raw-window-events")]
+        fn raw_window_event(
+            &self,
+            state: &mut Self::State,
+            window: window::Id,
+            event: &winit::event::WindowEvent,
+        ) -> Option<Task<Self::Message>> {
+            self.program.raw_window_event(state, window, event)
+        }
+
         fn view<'a>(
             &self,
             state: &'a Self::State,
@@ -257,6 +279,16 @@ pub fn with_subscription<P: Program>(
             self.program.update(state, message)
         }
 
+        #[cfg(feature = "raw-window-events")]
+        fn raw_window_event(
+            &self,
+            state: &mut Self::State,
+            window: window::Id,
+            event: &winit::event::WindowEvent,
+        ) -> Option<Task<Self::Message>> {
+            self.program.raw_window_event(state, window, event)
+        }
+
         fn view<'a>(
             &self,
             state: &'a Self::State,
@@ -293,6 +325,111 @@ pub fn with_subscription<P: Program>(
     WithSubscription {
         program,
         subscription: f,
+    }
+}
+
+/// Decorates a [`Program`] with the given raw window event function.
+#[cfg(feature = "raw-window-events")]
+pub fn with_raw_window_events<P: Program, F, C>(
+    program: P,
+    f: F,
+) -> impl Program<State = P::State, Message = P::Message, Theme = P::Theme>
+where
+    F: Fn(&mut P::State, window::Id, &winit::event::WindowEvent) -> C,
+    C: Into<Task<P::Message>>,
+{
+    struct WithRawWindowEvents<P, F> {
+        program: P,
+        raw_window_event: F,
+    }
+
+    impl<P: Program, F, C> Program for WithRawWindowEvents<P, F>
+    where
+        F: Fn(&mut P::State, window::Id, &winit::event::WindowEvent) -> C,
+        C: Into<Task<P::Message>>,
+    {
+        type State = P::State;
+        type Message = P::Message;
+        type Theme = P::Theme;
+        type Renderer = P::Renderer;
+        type Executor = P::Executor;
+
+        fn raw_window_event(
+            &self,
+            state: &mut Self::State,
+            window: window::Id,
+            event: &winit::event::WindowEvent,
+        ) -> Option<Task<Self::Message>> {
+            Some((self.raw_window_event)(state, window, event).into())
+        }
+
+        fn name() -> &'static str {
+            P::name()
+        }
+
+        fn settings(&self) -> Settings {
+            self.program.settings()
+        }
+
+        fn window(&self) -> Option<window::Settings> {
+            self.program.window()
+        }
+
+        fn boot(&self) -> (Self::State, Task<Self::Message>) {
+            self.program.boot()
+        }
+
+        fn update(
+            &self,
+            state: &mut Self::State,
+            message: Self::Message,
+        ) -> Task<Self::Message> {
+            self.program.update(state, message)
+        }
+
+        fn view<'a>(
+            &self,
+            state: &'a Self::State,
+            window: window::Id,
+        ) -> Element<'a, Self::Message, Self::Theme, Self::Renderer> {
+            self.program.view(state, window)
+        }
+
+        fn title(&self, state: &Self::State, window: window::Id) -> String {
+            self.program.title(state, window)
+        }
+
+        fn subscription(
+            &self,
+            state: &Self::State,
+        ) -> Subscription<Self::Message> {
+            self.program.subscription(state)
+        }
+
+        fn theme(
+            &self,
+            state: &Self::State,
+            window: window::Id,
+        ) -> Option<Self::Theme> {
+            self.program.theme(state, window)
+        }
+
+        fn style(
+            &self,
+            state: &Self::State,
+            theme: &Self::Theme,
+        ) -> theme::Style {
+            self.program.style(state, theme)
+        }
+
+        fn scale_factor(&self, state: &Self::State, window: window::Id) -> f32 {
+            self.program.scale_factor(state, window)
+        }
+    }
+
+    WithRawWindowEvents {
+        program,
+        raw_window_event: f,
     }
 }
 
@@ -350,6 +487,16 @@ pub fn with_theme<P: Program>(
             message: Self::Message,
         ) -> Task<Self::Message> {
             self.program.update(state, message)
+        }
+
+        #[cfg(feature = "raw-window-events")]
+        fn raw_window_event(
+            &self,
+            state: &mut Self::State,
+            window: window::Id,
+            event: &winit::event::WindowEvent,
+        ) -> Option<Task<Self::Message>> {
+            self.program.raw_window_event(state, window, event)
         }
 
         fn view<'a>(
@@ -439,6 +586,16 @@ pub fn with_style<P: Program>(
             self.program.update(state, message)
         }
 
+        #[cfg(feature = "raw-window-events")]
+        fn raw_window_event(
+            &self,
+            state: &mut Self::State,
+            window: window::Id,
+            event: &winit::event::WindowEvent,
+        ) -> Option<Task<Self::Message>> {
+            self.program.raw_window_event(state, window, event)
+        }
+
         fn view<'a>(
             &self,
             state: &'a Self::State,
@@ -516,6 +673,16 @@ pub fn with_scale_factor<P: Program>(
             message: Self::Message,
         ) -> Task<Self::Message> {
             self.program.update(state, message)
+        }
+
+        #[cfg(feature = "raw-window-events")]
+        fn raw_window_event(
+            &self,
+            state: &mut Self::State,
+            window: window::Id,
+            event: &winit::event::WindowEvent,
+        ) -> Option<Task<Self::Message>> {
+            self.program.raw_window_event(state, window, event)
         }
 
         fn view<'a>(
@@ -609,6 +776,16 @@ pub fn with_executor<P: Program, E: Executor>(
             self.program.update(state, message)
         }
 
+        #[cfg(feature = "raw-window-events")]
+        fn raw_window_event(
+            &self,
+            state: &mut Self::State,
+            window: window::Id,
+            event: &winit::event::WindowEvent,
+        ) -> Option<Task<Self::Message>> {
+            self.program.raw_window_event(state, window, event)
+        }
+
         fn view<'a>(
             &self,
             state: &'a Self::State,
@@ -684,6 +861,17 @@ impl<P: Program> Instance<P> {
     /// Processes the given message and updates the [`Instance`].
     pub fn update(&mut self, message: P::Message) -> Task<P::Message> {
         self.program.update(&mut self.state, message)
+    }
+
+    /// Processes the given raw winit window event and updates the [`Instance`].
+    #[cfg(feature = "raw-window-events")]
+    pub fn raw_window_event(
+        &mut self,
+        window: window::Id,
+        event: &winit::event::WindowEvent,
+    ) -> Option<Task<P::Message>> {
+        self.program
+            .raw_window_event(&mut self.state, window, event)
     }
 
     /// Produces the current widget tree of the [`Instance`].

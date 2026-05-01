@@ -125,6 +125,10 @@ where
         self.entries.get_mut(&id)
     }
 
+    pub fn alias(&self, id: winit::window::WindowId) -> Option<Id> {
+        self.aliases.get(&id).copied()
+    }
+
     pub fn get_mut_alias(
         &mut self,
         id: winit::window::WindowId,

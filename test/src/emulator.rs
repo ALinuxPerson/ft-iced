@@ -160,6 +160,25 @@ impl<P: Program + 'static> Emulator<P> {
         }
     }
 
+    /// Processes a raw winit window event.
+    #[cfg(feature = "raw-window-events")]
+    pub fn raw_window_event(
+        &mut self,
+        program: &P,
+        event: &program::winit::event::WindowEvent,
+    ) -> bool {
+        let Some(task) = self.runtime.enter(|| {
+            program.raw_window_event(&mut self.state, self.window, event)
+        }) else {
+            return false;
+        };
+
+        self.resubscribe(program);
+        self.wait_for(task);
+
+        true
+    }
+
     /// Performs an [`Action`].
     ///
     /// Whenever an [`Emulator`] sends an [`Event::Action`], this

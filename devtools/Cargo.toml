@@ -16,6 +16,7 @@ workspace = true
 
 [features]
 time-travel = ["iced_program/time-travel"]
+raw-window-events = ["iced_program/raw-window-events"]
 
 [dependencies]
 iced_debug.workspace = true

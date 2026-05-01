@@ -82,6 +82,16 @@ where
         state.update(&self.program, message)
     }
 
+    #[cfg(feature = "raw-window-events")]
+    fn raw_window_event(
+        &self,
+        state: &mut Self::State,
+        window: window::Id,
+        event: &program::winit::event::WindowEvent,
+    ) -> Option<Task<Self::Message>> {
+        state.raw_window_event(&self.program, window, event)
+    }
+
     fn view<'a>(
         &self,
         state: &'a Self::State,
@@ -299,6 +309,18 @@ where
             }
             Event::Discard => Task::none(),
         }
+    }
+
+    #[cfg(feature = "raw-window-events")]
+    pub fn raw_window_event(
+        &mut self,
+        program: &P,
+        window: window::Id,
+        event: &program::winit::event::WindowEvent,
+    ) -> Option<Task<Event<P>>> {
+        program
+            .raw_window_event(&mut self.state, window, event)
+            .map(|task| task.map(Event::Program))
     }
 
     pub fn view(

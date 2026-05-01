@@ -374,6 +374,29 @@ impl<P: Program> Application<P> {
         }
     }
 
+    /// Sets the raw winit window event logic of the [`Application`].
+    #[cfg(feature = "raw-window-events")]
+    pub fn raw_window_events<C>(
+        self,
+        f: impl Fn(
+            &mut P::State,
+            window::Id,
+            &program::winit::event::WindowEvent,
+        ) -> C,
+    ) -> Application<
+        impl Program<State = P::State, Message = P::Message, Theme = P::Theme>,
+    >
+    where
+        C: Into<Task<P::Message>>,
+    {
+        Application {
+            raw: program::with_raw_window_events(self.raw, f),
+            settings: self.settings,
+            window: self.window,
+            presets: self.presets,
+        }
+    }
+
     /// Sets the theme logic of the [`Application`].
     pub fn theme(
         self,
@@ -485,6 +508,16 @@ impl<P: Program> Program for Application<P> {
         message: Self::Message,
     ) -> Task<Self::Message> {
         debug::hot(|| self.raw.update(state, message))
+    }
+
+    #[cfg(feature = "raw-window-events")]
+    fn raw_window_event(
+        &self,
+        state: &mut Self::State,
+        window: window::Id,
+        event: &program::winit::event::WindowEvent,
+    ) -> Option<Task<Self::Message>> {
+        debug::hot(|| self.raw.raw_window_event(state, window, event))
     }
 
     fn view<'a>(

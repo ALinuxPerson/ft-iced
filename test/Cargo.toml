@@ -14,6 +14,9 @@ rust-version.workspace = true
 [lints]
 workspace = true
 
+[features]
+raw-window-events = ["iced_program/raw-window-events"]
+
 [dependencies]
 iced_runtime.workspace = true
 iced_program.workspace = true

@@ -2466,6 +2466,7 @@ version = "0.14.0"
 dependencies = [
  "iced_graphics",
  "iced_runtime",
+ "winit",
 ]
 
 [[package]]

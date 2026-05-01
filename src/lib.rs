@@ -660,6 +660,9 @@ pub use renderer::Renderer;
 pub use task::Task;
 pub use window::Window;
 
+#[cfg(feature = "raw-window-events")]
+pub use iced_winit::winit;
+
 #[doc(inline)]
 pub use application::application;
 #[doc(inline)]

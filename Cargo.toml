@@ -83,6 +83,12 @@ strict-assertions = ["iced_renderer/strict-assertions"]
 unconditional-rendering = ["iced_winit/unconditional-rendering"]
 # Enables support for the `sipper` library
 sipper = ["iced_runtime/sipper"]
+# Enables direct access to raw winit window events in Program and Application
+raw-window-events = [
+    "iced_winit/raw-window-events",
+    "iced_devtools?/raw-window-events",
+    "iced_tester?/raw-window-events",
+]
 # Enables Linux system theme detection
 linux-theme-detection = ["iced_winit/linux-theme-detection"]
 # Enables the Unix X11 backend
