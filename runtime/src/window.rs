@@ -80,6 +80,9 @@ pub enum Action {
     /// Change the cursor grab mode of the window.
     SetCursorGrabMode(Id, CursorGrabMode),
 
+    /// Change the cursor visibility of the window.
+    SetCursorVisible(Id, bool),
+
     /// Get the current [`Mode`] of the window.
     GetMode(Id, oneshot::Sender<Mode>),
 
@@ -405,6 +408,13 @@ pub fn set_cursor_grab_mode<T>(
     mode: CursorGrabMode,
 ) -> Task<T> {
     task::effect(crate::Action::Window(Action::SetCursorGrabMode(id, mode)))
+}
+
+/// Changes the cursor visibility of the window.
+pub fn set_cursor_visible<T>(id: Id, visible: bool) -> Task<T> {
+    task::effect(crate::Action::Window(Action::SetCursorVisible(
+        id, visible,
+    )))
 }
 
 /// Toggles the window to maximized or back.

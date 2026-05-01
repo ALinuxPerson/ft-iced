@@ -1723,6 +1723,11 @@ fn run_action<'a, P, C>(
                         .set_cursor_grab(conversion::cursor_grab_mode(mode));
                 }
             }
+            window::Action::SetCursorVisible(id, visible) => {
+                if let Some(window) = window_manager.get_mut(id) {
+                    window.raw.set_cursor_visible(visible);
+                }
+            }
             window::Action::SetIcon(id, icon) => {
                 if let Some(window) = window_manager.get_mut(id) {
                     window.raw.set_window_icon(conversion::icon(icon));
