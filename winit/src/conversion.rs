@@ -1216,6 +1216,21 @@ pub fn user_attention(
     }
 }
 
+/// Converts some [`CursorGrabMode`] into its `winit` counterpart.
+pub fn cursor_grab_mode(
+    mode: window::CursorGrabMode,
+) -> winit::window::CursorGrabMode {
+    match mode {
+        window::CursorGrabMode::None => winit::window::CursorGrabMode::None,
+        window::CursorGrabMode::Confined => {
+            winit::window::CursorGrabMode::Confined
+        }
+        window::CursorGrabMode::Locked => {
+            winit::window::CursorGrabMode::Locked
+        }
+    }
+}
+
 /// Converts some [`window::Direction`] into a [`winit::window::ResizeDirection`].
 pub fn resize_direction(
     resize_direction: window::Direction,

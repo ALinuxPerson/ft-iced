@@ -1,8 +1,8 @@
 //! Build window-based GUI applications.
 use crate::core::time::Instant;
 use crate::core::window::{
-    Direction, Event, Icon, Id, Level, Mode, Screenshot, Settings,
-    UserAttention,
+    CursorGrabMode, Direction, Event, Icon, Id, Level, Mode, Screenshot,
+    Settings, UserAttention,
 };
 use crate::core::{Point, Size};
 use crate::futures::Subscription;
@@ -76,6 +76,9 @@ pub enum Action {
 
     /// Change the [`Mode`] of the window.
     SetMode(Id, Mode),
+
+    /// Change the cursor grab mode of the window.
+    SetCursorGrabMode(Id, CursorGrabMode),
 
     /// Get the current [`Mode`] of the window.
     GetMode(Id, oneshot::Sender<Mode>),
@@ -394,6 +397,14 @@ pub fn mode(id: Id) -> Task<Mode> {
 /// Changes the [`Mode`] of the window.
 pub fn set_mode<T>(id: Id, mode: Mode) -> Task<T> {
     task::effect(crate::Action::Window(Action::SetMode(id, mode)))
+}
+
+/// Changes the cursor grab mode of the window.
+pub fn set_cursor_grab_mode<T>(
+    id: Id,
+    mode: CursorGrabMode,
+) -> Task<T> {
+    task::effect(crate::Action::Window(Action::SetCursorGrabMode(id, mode)))
 }
 
 /// Toggles the window to maximized or back.
